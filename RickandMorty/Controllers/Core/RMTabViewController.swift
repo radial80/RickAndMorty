@@ -4,6 +4,7 @@
 
 import UIKit
 
+/// Controller to house tabs and root tabs controller
 class RMTabBarController: UITabBarController {
 
     override func viewDidLoad() {
