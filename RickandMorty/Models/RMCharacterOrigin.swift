@@ -1,9 +1,4 @@
-//
-//  RMOrigin.swift
-//  RickandMorty
-//
-//  Created by Kasım Sağır on 18.06.2023.
-//
+
 
 import Foundation
 
