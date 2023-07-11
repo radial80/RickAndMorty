@@ -13,6 +13,12 @@ private let characterListView = CharacterListView()
 
         view.backgroundColor = .systemBackground
         title = "Characters"
+
+        setUpView()
+      
+
+        }
+    private func setUpView() {
         view.addSubview(characterListView)
         NSLayoutConstraint.activate([
             characterListView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -20,8 +26,5 @@ private let characterListView = CharacterListView()
             characterListView.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor),
             characterListView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
-
-      
-
-        }
+    }
     } 
