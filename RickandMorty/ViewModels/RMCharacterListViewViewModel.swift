@@ -1,6 +1,13 @@
 import UIKit
 
+protocol RMCharacterListViewViewModelDelegate: AnyObject {
+    func didLoadInitialCharacters()
+    func didSelectCharacter(_ character: RMCharacter)
+}
+
 final class RMCharacterListViewViewModel: NSObject {
+
+    public weak var delegate: RMCharacterListViewViewModelDelegate?
 
     private var characters: [RMCharacter] = [] {
         didSet {
@@ -24,6 +31,9 @@ final class RMCharacterListViewViewModel: NSObject {
                 case .success(let responseModel):
                     let results = responseModel.results
                     self?.characters = results
+                    DispatchQueue.main.async {
+                        self?.delegate?.didLoadInitialCharacters()
+                    }
                 case .failure(let error):
                     print(String(describing: error))
             }
@@ -52,5 +62,10 @@ extension RMCharacterListViewViewModel: UICollectionViewDataSource, UICollection
         return CGSize(
             width: width,
             height: width*1.5)
+    }
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        collectionView.deselectItem(at: indexPath, animated: true)
+        let character = characters[indexPath.row]
+        delegate?.didSelectCharacter(character)
     }
 }
