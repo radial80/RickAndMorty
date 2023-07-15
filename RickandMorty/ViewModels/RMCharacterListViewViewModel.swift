@@ -3,6 +3,7 @@ import UIKit
 protocol RMCharacterListViewViewModelDelegate: AnyObject {
     func didLoadInitialCharacters()
     func didSelectCharacter(_ character: RMCharacter)
+    func didLoadMoreCharacters(with newIndexPath: [IndexPath])
 }
 
 final class RMCharacterListViewViewModel: NSObject {
@@ -22,7 +23,9 @@ final class RMCharacterListViewViewModel: NSObject {
                     characterStatus: character.status,
                     characterImageURL: URL(string: character.image)
                 )
-                cellViewModels.append(viewModel)
+                if !cellViewModels.contains(viewModel) {
+                    cellViewModels.append(viewModel)
+                }
             }
         }
     }
@@ -48,16 +51,50 @@ final class RMCharacterListViewViewModel: NSObject {
         }
     }
 
-    public func fetchAdditionalCharacters() {
+    public func fetchAdditionalCharacters(url: URL)  {
+        guard !isLoadingMore else {
+            return
+        }
+        isLoadingMore = true
+        guard let request = RMRequest(url: url) else {
+            isLoadingMore = false
+             return
+        }
+        RMService.shared.execute(request,
+                                expecting: RMGetAllCharactersResponse.self) {[weak self] result in
+            guard let Strongself = self else {
+                return }
+            switch result {
+                case .success(let responseModel):
+                    let moreResult = responseModel.results
+                    let info = responseModel.info
+                    Strongself.apiinfo = info
+                    let originalCount = Strongself.characters.count
+                    let newCount = moreResult.count
+                    let total = originalCount+newCount
+                    let startigIndex = total - newCount
+                    let indexPathsToAdd: [IndexPath] = Array(startigIndex..<(startigIndex+newCount)).compactMap({
+                        return IndexPath(row: $0, section:0)
+                    })
 
+                    Strongself.characters.append(contentsOf: moreResult)
+                    DispatchQueue.main.async {
+                        Strongself.delegate?.didLoadMoreCharacters(with: indexPathsToAdd)
+                        Strongself.isLoadingMore = false
+                    }
+                case .failure(let failure):
+                    print(String(describing: failure))
+                    self?.isLoadingMore = false
+            }
+        }
     }
 
     public var shouldShowLoadMoreIndicator: Bool {
         return apiinfo?.next != nil
     }
-
-    
 }
+    
+
 
 // MARK: - CollectionView Implementation
 
@@ -118,23 +155,32 @@ extension RMCharacterListViewViewModel: UICollectionViewDataSource, UICollection
 
 extension RMCharacterListViewViewModel: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard shouldShowLoadMoreIndicator, !isLoadingMore else {
+        guard shouldShowLoadMoreIndicator,
+              !isLoadingMore,
+              !cellViewModels.isEmpty,
+              let nextURLString = apiinfo?.next,
+              let url = URL(string: nextURLString)
+        else {
             return
         }
-        let offSet = scrollView.contentOffset.y
-        let totalContentHeight = scrollView.contentSize.height
-        let totalScrollViewFixedHeight = scrollView.frame.size.height
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] t in
+            let offSet = scrollView.contentOffset.y
+            let totalContentHeight = scrollView.contentSize.height
+            let totalScrollViewFixedHeight = scrollView.frame.size.height
 
-        if offSet >= (totalContentHeight - totalScrollViewFixedHeight) {
-
-            counter += 1
-            if counter >= 2 {
-                print("Should Start Fetching Data")
-                isLoadingMore = true
+            if offSet >= (totalContentHeight - totalScrollViewFixedHeight - 120) {
+                self?.fetchAdditionalCharacters(url: url)
+//                self!.counter += 1
+//                if self!.counter >= 70 {
+//                    print("Should Start Fetching Data")
+//                    self?.fetchAdditionalCharacters(url: url)
+//                    self?.isLoadingMore = true
+//                }
+                t.invalidate()
+                //        print("offSet:  \(offSet)")
+                //        print("totalContentHeight:  \(totalContentHeight)")
+                //        print("totalScrollViewFixedHeight:  \(totalScrollViewFixedHeight)")
             }
-            //        print("offSet:  \(offSet)")
-            //        print("totalContentHeight:  \(totalContentHeight)")
-            //        print("totalScrollViewFixedHeight:  \(totalScrollViewFixedHeight)")
         }
     }
 }
